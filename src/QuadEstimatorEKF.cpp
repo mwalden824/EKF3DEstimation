@@ -180,7 +180,39 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
   Quaternion<float> attitude = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, curState(6));
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  float gravity = 9.81;
+  VectorXf a(7);
+  a(0) = curState(0) + curState(3) * dt;
+  a(1) = curState(1) + curState(4) * dt;
+  a(2) = curState(2) + curState(5) * dt;
+  a(3) = curState(3);
+  a(4) = curState(4);
+  a(5) = curState(5) - gravity * dt; 
+  a(6) = curState(6);
 
+  VectorXf u(4);
+  u(0) = accel.x;
+  u(1) = accel.y;
+  u(2) = accel.z;
+  u(3) = attitude.Rotate_BtoI(gyro)[2];
+
+  float theta = pitchEst;
+  float phi = rollEst;
+  float psi = curState(6);
+
+  MatrixXf Rbg(QUAD_EKF_NUM_STATES, 4);
+  Rbg(6, 3) = 1.0;
+  Rbg(3, 0) = cos(theta) * cos(psi);
+  Rbg(3, 1) = sin(phi) * sin(theta) * cos(psi) - cos(phi) * sin(psi);
+  Rbg(3, 2) = cos(phi) * sin(theta) * cos(psi) + sin(phi) * sin(psi);
+  Rbg(4, 0) = cos(theta) * sin(psi);
+  Rbg(4, 1) = sin(phi) * sin(theta) * sin(psi) + cos(phi) * cos(psi);
+  Rbg(4, 2) = cos(phi) * sin(theta) * sin(psi) - sin(phi) * cos(psi);
+  Rbg(5, 0) = -sin(theta);
+  Rbg(5, 1) = cos(theta) * sin(phi);
+  Rbg(5, 2) = cos(theta) * cos(phi);
+
+  predictedState = a + Rbg * u * dt;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -207,8 +239,19 @@ MatrixXf QuadEstimatorEKF::GetRbgPrime(float roll, float pitch, float yaw)
   //   that your calculations are reasonable
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  float theta = pitch;
+  float phi = roll;
+  float psi = yaw;
 
-
+  RbgPrime(0, 0) = -cos(theta) * sin(psi);
+  RbgPrime(0, 1) = -sin(phi) * sin(theta) * sin(psi) - cos(phi) * cos(psi);
+  RbgPrime(0, 2) = -cos(phi) * sin(theta) * sin(psi) + sin(phi) * cos(psi);
+  RbgPrime(1, 0) = cos(theta) * cos(psi);
+  RbgPrime(1, 1) = sin(phi) * sin(theta) * cos(psi) - cos(phi) * sin(psi);
+  RbgPrime(1, 2) = cos(phi) * sin(theta) * cos(psi) + sin(phi) * sin(psi);
+  RbgPrime(2, 0) = 0;
+  RbgPrime(2, 1) = 0;
+  RbgPrime(2, 2) = 0;
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   return RbgPrime;
@@ -253,7 +296,17 @@ void QuadEstimatorEKF::Predict(float dt, V3F accel, V3F gyro)
   gPrime.setIdentity();
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  gPrime(0, 3) = dt;
+  gPrime(1, 4) = dt;
+  gPrime(2, 5) = dt;
+  gPrime(3, 6) = (RbgPrime(0, 0) * accel.x + RbgPrime(0, 1) * accel.y + RbgPrime(0, 2) * accel.z) * dt;
+  gPrime(3, 6) = (RbgPrime(1, 0) * accel.x + RbgPrime(1, 1) * accel.y + RbgPrime(1, 2) * accel.z) * dt;
+  gPrime(3, 6) = (RbgPrime(2, 0) * accel.x + RbgPrime(2, 1) * accel.y + RbgPrime(2, 2) * accel.z) * dt;
 
+  MatrixXf newCov(QUAD_EKF_NUM_STATES, QUAD_EKF_NUM_STATES);
+  newCov = gPrime * ekfCov * gPrime.transpose() + Q;
+
+  ekfCov = newCov;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
