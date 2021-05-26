@@ -180,39 +180,40 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
   Quaternion<float> attitude = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, curState(6));
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-  float gravity = 9.81;
+  float gravity = 9.81f;
   VectorXf a(7);
-  a(0) = curState(0) + curState(3) * dt;
-  a(1) = curState(1) + curState(4) * dt;
-  a(2) = curState(2) + curState(5) * dt;
-  a(3) = curState(3);
-  a(4) = curState(4);
-  a(5) = curState(5) - gravity * dt; 
-  a(6) = curState(6);
+  V3F accelInert = attitude.Rotate_BtoI(accel) - V3F(0.0f, 0.0f, gravity);
+  predictedState(0) = predictedState(0) + curState(3) * dt;
+  predictedState(1) = predictedState(1) + curState(4) * dt;
+  predictedState(2) = predictedState(2) + curState(5) * dt;
+  predictedState(3) = predictedState(3) + accelInert.x * dt;
+  predictedState(4) = predictedState(4) + accelInert.y * dt;
+  predictedState(5) = predictedState(5) + accelInert.z * dt; 
+  // predictedState(6) = predictedState(6);
 
-  VectorXf u(4);
-  u(0) = accel.x;
-  u(1) = accel.y;
-  u(2) = accel.z;
-  u(3) = attitude.Rotate_BtoI(gyro)[2];
+  // VectorXf u(4);
+  // u(0) = accelInert[0];
+  // u(1) = accelInert[1];
+  // u(2) = accelInert[2];
+  // u(3) = attitude.Rotate_BtoI(gyro)[2]; // **
 
-  float theta = pitchEst;
-  float phi = rollEst;
-  float psi = curState(6);
+  // float theta = pitchEst;
+  // float phi = rollEst;
+  // float psi = curState(6);
 
-  MatrixXf Rbg(QUAD_EKF_NUM_STATES, 4);
-  Rbg(6, 3) = 1.0;
-  Rbg(3, 0) = cos(theta) * cos(psi);
-  Rbg(3, 1) = sin(phi) * sin(theta) * cos(psi) - cos(phi) * sin(psi);
-  Rbg(3, 2) = cos(phi) * sin(theta) * cos(psi) + sin(phi) * sin(psi);
-  Rbg(4, 0) = cos(theta) * sin(psi);
-  Rbg(4, 1) = sin(phi) * sin(theta) * sin(psi) + cos(phi) * cos(psi);
-  Rbg(4, 2) = cos(phi) * sin(theta) * sin(psi) - sin(phi) * cos(psi);
-  Rbg(5, 0) = -sin(theta);
-  Rbg(5, 1) = cos(theta) * sin(phi);
-  Rbg(5, 2) = cos(theta) * cos(phi);
+  // MatrixXf Rbg(QUAD_EKF_NUM_STATES, 4);
+  // Rbg(6, 3) = 1.0;
+  // Rbg(3, 0) = cos(theta) * cos(psi);
+  // Rbg(3, 1) = sin(phi) * sin(theta) * cos(psi) - cos(phi) * sin(psi);
+  // Rbg(3, 2) = cos(phi) * sin(theta) * cos(psi) + sin(phi) * sin(psi);
+  // Rbg(4, 0) = cos(theta) * sin(psi);
+  // Rbg(4, 1) = sin(phi) * sin(theta) * sin(psi) + cos(phi) * cos(psi);
+  // Rbg(4, 2) = cos(phi) * sin(theta) * sin(psi) - sin(phi) * cos(psi);
+  // Rbg(5, 0) = -sin(theta);
+  // Rbg(5, 1) = cos(theta) * sin(phi);
+  // Rbg(5, 2) = cos(theta) * cos(phi);
 
-  predictedState = a + Rbg * u * dt;
+  // predictedState = a + Rbg * u * dt;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -331,6 +332,17 @@ void QuadEstimatorEKF::UpdateFromGPS(V3F pos, V3F vel)
   //  - The GPS measurement covariance is available in member variable R_GPS
   //  - this is a very simple update
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  zFromX(0) = ekfState(0);
+  zFromX(1) = ekfState(1);
+  zFromX(2) = ekfState(2);
+  zFromX(3) = ekfState(3);
+  zFromX(4) = ekfState(4);
+  zFromX(5) = ekfState(5);
+
+  for (int i = 0; i < 6; i++)
+  {
+    hPrime(i, i) = 1.0f;
+  }
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -353,6 +365,15 @@ void QuadEstimatorEKF::UpdateFromMag(float magYaw)
   //  - The magnetomer measurement covariance is available in member variable R_Mag
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  zFromX(0) = ekfState(6);
+
+  // Normalize 
+  float zDiff = (zFromX(0) - z(0));
+
+  if (zDiff > F_PI)  zFromX(0) -= 2.f*F_PI;
+  if (zDiff < -F_PI) zFromX(0) += 2.f*F_PI;  
+  
+  hPrime(0, 6) = 1.0f;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
