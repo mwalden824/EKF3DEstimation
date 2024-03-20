@@ -181,7 +181,6 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
   float gravity = 9.81f;
-  VectorXf a(7);
   V3F accelInert = attitude.Rotate_BtoI(accel) - V3F(0.0f, 0.0f, gravity);
   predictedState(0) = predictedState(0) + curState(3) * dt;
   predictedState(1) = predictedState(1) + curState(4) * dt;
@@ -189,31 +188,7 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
   predictedState(3) = predictedState(3) + accelInert.x * dt;
   predictedState(4) = predictedState(4) + accelInert.y * dt;
   predictedState(5) = predictedState(5) + accelInert.z * dt; 
-  // predictedState(6) = predictedState(6);
-
-  // VectorXf u(4);
-  // u(0) = accelInert[0];
-  // u(1) = accelInert[1];
-  // u(2) = accelInert[2];
-  // u(3) = attitude.Rotate_BtoI(gyro)[2]; // **
-
-  // float theta = pitchEst;
-  // float phi = rollEst;
-  // float psi = curState(6);
-
-  // MatrixXf Rbg(QUAD_EKF_NUM_STATES, 4);
-  // Rbg(6, 3) = 1.0;
-  // Rbg(3, 0) = cos(theta) * cos(psi);
-  // Rbg(3, 1) = sin(phi) * sin(theta) * cos(psi) - cos(phi) * sin(psi);
-  // Rbg(3, 2) = cos(phi) * sin(theta) * cos(psi) + sin(phi) * sin(psi);
-  // Rbg(4, 0) = cos(theta) * sin(psi);
-  // Rbg(4, 1) = sin(phi) * sin(theta) * sin(psi) + cos(phi) * cos(psi);
-  // Rbg(4, 2) = cos(phi) * sin(theta) * sin(psi) - sin(phi) * cos(psi);
-  // Rbg(5, 0) = -sin(theta);
-  // Rbg(5, 1) = cos(theta) * sin(phi);
-  // Rbg(5, 2) = cos(theta) * cos(phi);
-
-  // predictedState = a + Rbg * u * dt;
+  predictedState(6) = predictedState(6);
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
